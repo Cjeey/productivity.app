@@ -23,6 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const isAuthPage = pathname?.startsWith("/login") || pathname?.startsWith("/auth/callback");
 
   useEffect(() => {
     const loadSession = async () => {
@@ -48,6 +49,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       setUser(null);
     }
   };
+
+  if (isAuthPage) {
+    return <main className="min-h-screen bg-[#f4f6fb] dark:bg-slate-950">{children}</main>;
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-slate-950 flex">
