@@ -1,17 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAppStore } from "@/lib/store";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface FocusTimerProps {
-  defaultMinutes?: number;
+  minutes: number;
   taskId?: string;
   withCard?: boolean;
+  onLog: (payload: { taskId?: string; startedAt: string; durationSeconds: number }) => Promise<void> | void;
 }
 
-export default function FocusTimer({ defaultMinutes = 25, taskId, withCard = true }: FocusTimerProps) {
-  const logFocusSession = useAppStore((state) => state.logFocusSession);
-  const [secondsRemaining, setSecondsRemaining] = useState(defaultMinutes * 60);
+export default function FocusTimer({ minutes: presetMinutes, taskId, withCard = true, onLog }: FocusTimerProps) {
+  const [secondsRemaining, setSecondsRemaining] = useState(presetMinutes * 60);
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,6 +30,12 @@ export default function FocusTimer({ defaultMinutes = 25, taskId, withCard = tru
     };
   }, [running]);
 
+  useEffect(() => {
+    if (!running) {
+      setSecondsRemaining(presetMinutes * 60);
+    }
+  }, [presetMinutes, running]);
+
   const handleStart = useCallback(() => {
     setStartedAt(new Date());
     setRunning(true);
@@ -38,24 +43,25 @@ export default function FocusTimer({ defaultMinutes = 25, taskId, withCard = tru
 
   const handleStop = useCallback(() => {
     setRunning(false);
-    const durationMinutes = Math.round(
-      (defaultMinutes * 60 - secondsRemaining) / 60
-    );
-    if (startedAt && durationMinutes > 0) {
-      logFocusSession({
+    if (startedAt) {
+      const durationSeconds = presetMinutes * 60 - secondsRemaining;
+      void onLog({
         taskId,
-        startTime: startedAt.toISOString(),
-        endTime: new Date().toISOString(),
-        durationMinutes,
+        startedAt: startedAt.toISOString(),
+        durationSeconds: Math.max(1, durationSeconds),
       });
     }
-  }, [defaultMinutes, logFocusSession, secondsRemaining, startedAt, taskId]);
+  }, [onLog, presetMinutes, secondsRemaining, startedAt, taskId]);
 
   const handleReset = useCallback(() => {
+    if (running || secondsRemaining !== presetMinutes * 60) {
+      const confirmed = window.confirm("Reset the current session?");
+      if (!confirmed) return;
+    }
     setRunning(false);
-    setSecondsRemaining(defaultMinutes * 60);
+    setSecondsRemaining(presetMinutes * 60);
     setStartedAt(null);
-  }, [defaultMinutes]);
+  }, [presetMinutes, running, secondsRemaining]);
 
   useEffect(() => {
     if (secondsRemaining === 0 && running) {
@@ -69,9 +75,9 @@ export default function FocusTimer({ defaultMinutes = 25, taskId, withCard = tru
   const seconds = (secondsRemaining % 60).toString().padStart(2, "0");
 
   const progress = useMemo(() => {
-    const total = defaultMinutes * 60;
+    const total = presetMinutes * 60;
     return Math.min(100, Math.round(((total - secondsRemaining) / total) * 100));
-  }, [defaultMinutes, secondsRemaining]);
+  }, [presetMinutes, secondsRemaining]);
 
   const wrapperClass = withCard ? "card p-6 space-y-4" : "space-y-4";
 
@@ -85,7 +91,7 @@ export default function FocusTimer({ defaultMinutes = 25, taskId, withCard = tru
           </p>
         </div>
         <span className="badge bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
-          {defaultMinutes} min
+          {presetMinutes} min
         </span>
       </div>
       <div className="relative h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">

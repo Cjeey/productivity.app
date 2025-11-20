@@ -1,242 +1,197 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-client';
-import { toast } from 'sonner';
-import { formatShortDate } from '@/lib/utils';
-import CategoryBadge from '@/components/ui/category-badge';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import FocusTimer from "@/components/focus/focus-timer";
+import CategoryBadge from "@/components/ui/category-badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatShortDate } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { MOCK_USER_ID } from "@/lib/constants";
+import { Category } from "@/lib/types";
 
-const mockUserId = 'mock-user-1';
-
-interface Task {
+interface DbTaskRow {
   id: string;
-  user_id: string;
   title: string;
-  category: string;
+  category: string | null;
 }
 
-interface FocusSession {
+interface DbFocusSession {
   id: string;
-  user_id: string;
-  task_id: string;
-  start: string;
-  end: string;
-  duration: number;
+  task_id: string | null;
+  duration_minutes: number;
+  session_date: string | null;
+  created_at: string;
 }
+
+interface TaskOption {
+  id: string;
+  title: string;
+  category: Category;
+}
+
+const formatCategory = (value: string | null): Category => {
+  const normalized = (value ?? "personal").toLowerCase();
+  if (normalized === "uni") return "Uni";
+  if (normalized === "work") return "Work";
+  return "Personal";
+};
 
 export default function FocusPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [sessions, setSessions] = useState<FocusSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTaskId, setSelectedTaskId] = useState('');
-  const [isRunning, setIsRunning] = useState(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [tasks, setTasks] = useState<TaskOption[]>([]);
+  const [sessions, setSessions] = useState<DbFocusSession[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<string>("");
+  const [duration, setDuration] = useState(25);
+  const [savingSession, setSavingSession] = useState(false);
+
+  const loadTasks = useCallback(async () => {
+    setLoadingTasks(true);
+    const { data, error } = await supabase.from("tasks").select<DbTaskRow>("id,title,category").eq("user_id", MOCK_USER_ID);
+    if (error) {
+      toast.error("Unable to load tasks", { description: error.message });
+      setTasks([]);
+    } else {
+      const mapped = (data ?? []).map((task) => ({
+        id: task.id,
+        title: task.title,
+        category: formatCategory(task.category),
+      }));
+      setTasks(mapped);
+      setSelectedTask((prev) => prev || mapped[0]?.id || "");
+    }
+    setLoadingTasks(false);
+  }, [supabase]);
+
+  const loadSessions = useCallback(async () => {
+    setLoadingSessions(true);
+    const { data, error } = await supabase
+      .from("focus_sessions")
+      .select<DbFocusSession>("id,task_id,duration_minutes,session_date,created_at")
+      .eq("user_id", MOCK_USER_ID)
+      .order("created_at", { ascending: false })
+      .limit(25);
+    if (error) {
+      toast.error("Unable to load sessions", { description: error.message });
+      setSessions([]);
+    } else {
+      setSessions(data ?? []);
+    }
+    setLoadingSessions(false);
+  }, [supabase]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: taskData, error: taskError } = await supabase
-          .from('tasks')
-          .select()
-          .eq('user_id', mockUserId);
-        if (taskError) throw taskError;
-        setTasks(taskData || []);
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('focus_sessions')
-          .select()
-          .eq('user_id', mockUserId)
-          .order('start', { ascending: false });
-        if (sessionError) throw sessionError;
-        setSessions(sessionData || []);
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load focus data');
-      } finally {
-        setLoading(false);
-      }
+    void loadTasks();
+    void loadSessions();
+  }, [loadSessions, loadTasks]);
+
+  const handleLogSession = async ({
+    taskId,
+    startedAt,
+    durationSeconds,
+  }: {
+    taskId?: string;
+    startedAt: string;
+    durationSeconds: number;
+  }) => {
+    const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
+    setSavingSession(true);
+    const payload = {
+      task_id: taskId ?? null,
+      duration_minutes: durationMinutes,
+      session_date: startedAt.slice(0, 10),
+      user_id: MOCK_USER_ID,
     };
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-    if (isRunning) {
-      timer = setInterval(() => {
-        if (startTime) {
-          setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000));
-        }
-      }, 1000);
+    const { data, error } = await supabase.from("focus_sessions").insert(payload).select<DbFocusSession>().single();
+    if (error) {
+      toast.error("Could not save session", { description: error.message });
+    } else if (data) {
+      toast.success("Session logged");
+      setSessions((prev) => [data, ...prev]);
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isRunning, startTime]);
-
-  const startSession = () => {
-    if (!selectedTaskId) {
-      toast.error('Please select a task');
-      return;
-    }
-    if (isRunning) return;
-    setStartTime(new Date());
-    setElapsed(0);
-    setIsRunning(true);
+    setSavingSession(false);
   };
 
-  const endSession = async () => {
-    if (!isRunning || !startTime) return;
-    const end = new Date();
-    const durationSec = Math.floor((end.getTime() - startTime.getTime()) / 1000);
-    try {
-      const { error } = await supabase
-        .from('focus_sessions')
-        .insert({
-          id: crypto.randomUUID(),
-          user_id: mockUserId,
-          task_id: selectedTaskId,
-          start: startTime.toISOString(),
-          end: end.toISOString(),
-          duration: durationSec,
-        });
-      if (error) throw error;
-      toast.success('Focus session logged');
-      setSessions(prev => [
-        {
-          id: crypto.randomUUID(),
-          user_id: mockUserId,
-          task_id: selectedTaskId,
-          start: startTime.toISOString(),
-          end: end.toISOString(),
-          duration: durationSec,
-        },
-        ...prev,
-      ]);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to log session');
-    } finally {
-      setIsRunning(false);
-      setStartTime(null);
-      setElapsed(0);
-    }
-  };
-
-  const resetSession = () => {
-    if (!isRunning) return;
-    if (confirm('Reset current session?')) {
-      setIsRunning(false);
-      setStartTime(null);
-      setElapsed(0);
-    }
-  };
-
-  const remainingSeconds = pomodoroMinutes * 60 - elapsed;
-  const minutes = Math.floor(remainingSeconds / 60)
-    .toString()
-    .padStart(2, '0');
-  const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+  const enrichedSessions = useMemo(() => {
+    return sessions.map((session) => ({
+      ...session,
+      displayDate: session.session_date ?? session.created_at,
+      task: tasks.find((task) => task.id === session.task_id),
+    }));
+  }, [sessions, tasks]);
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="space-y-6">
       <header className="space-y-2">
-        <p className="subtle">Stay focused on one task at a time.</p>
+        <p className="subtle">Stay focused and log your sessions.</p>
         <h1 className="section-title">Focus</h1>
       </header>
-      {/* Task selection and timer controls */}
-      <div className="card p-6 space-y-4 max-w-3xl">
-        <div className="space-y-2">
-          <label className="label" htmlFor="task">
-            Select task
-          </label>
-          <select
-            id="task"
-            className="select w-full"
-            value={selectedTaskId}
-            onChange={e => setSelectedTaskId(e.target.value)}
-          >
-            <option value="">-- Choose a task --</option>
-            {tasks.map(task => (
-              <option key={task.id} value={task.id}>
-                {task.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="label" htmlFor="duration">
-            Pomodoro duration (minutes)
-          </label>
-          <input
-            id="duration"
-            type="number"
-            min={1}
-            className="input w-full"
-            value={pomodoroMinutes}
-            onChange={e => setPomodoroMinutes(Number(e.target.value))}
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          {!isRunning ? (
-            <button
-              className="btn btn-primary"
-              onClick={startSession}
-              disabled={loading || !selectedTaskId}
-            >
-              Start
-            </button>
-          ) : (
-            <>
-              <button className="btn btn-secondary" onClick={endSession}>
-                End
-              </button>
-              <button className="btn btn-warning" onClick={resetSession}>
-                Reset
-              </button>
-              <span className="text-lg font-mono">
-                {minutes}:{seconds}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-      {/* Sessions list */}
-      <div className="space-y-2 max-w-3xl">
-        <h2 className="text-xl font-semibold">Past sessions</h2>
-        {loading ? (
-          <div className="space-y-2">
-            <div className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
-            <div className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
-            <div className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-1 card p-5 space-y-4">
+          <div className="space-y-1">
+            <label className="label">Link to task</label>
+            {loadingTasks ? (
+              <Skeleton className="h-12 w-full" />
+            ) : (
+              <select className="input" value={selectedTask} onChange={(e) => setSelectedTask(e.target.value)}>
+                <option value="">Unlinked session</option>
+                {tasks.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-        ) : sessions.length === 0 ? (
-          <p className="text-sm text-slate-500">No focus sessions yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {sessions.map(session => {
-              const task = tasks.find(t => t.id === session.task_id);
-              return (
-                <li
+          <div className="space-y-1">
+            <label className="label">Session length (minutes)</label>
+            <input
+              type="number"
+              min={5}
+              max={120}
+              className="input"
+              value={duration}
+              onChange={(e) => setDuration(Math.min(120, Math.max(5, Number(e.target.value) || 5)))}
+            />
+          </div>
+          <FocusTimer minutes={duration} taskId={selectedTask || undefined} onLog={handleLogSession} />
+          {savingSession && <p className="text-xs text-slate-500">Saving session...</p>}
+        </div>
+
+        <div className="lg:col-span-2 card p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900 dark:text-slate-50">Session history</h2>
+            <span className="subtle">{sessions.length} sessions</span>
+          </div>
+          <div className="space-y-2 text-sm">
+            {loadingSessions ? (
+              Array.from({ length: 3 }).map((_, idx) => <Skeleton key={idx} className="h-16 w-full rounded-2xl" />)
+            ) : enrichedSessions.length === 0 ? (
+              <p className="subtle">No sessions yet. Start one to log.</p>
+            ) : (
+              enrichedSessions.map((session) => (
+                <div
                   key={session.id}
-                  className="p-2 border rounded flex justify-between items-center"
+                  className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex items-center justify-between"
                 >
-                  <div className="flex flex-col">
-                    <span className="font-semibold">
-                      {task ? task.title : 'Unknown task'}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      {formatShortDate(new Date(session.start))} ·{' '}
-                      {Math.round(session.duration / 60)}m
-                    </span>
+                  <div>
+                    <p className="font-semibold text-slate-900 dark:text-slate-50">
+                      {session.task?.title ?? "Unlinked session"}
+                    </p>
+                    <p className="text-slate-500 dark:text-slate-300">
+                      {session.duration_minutes} min · {formatShortDate(session.displayDate)}
+                    </p>
                   </div>
-                  {task && <CategoryBadge category={task.category} />}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                  {session.task && <CategoryBadge category={session.task.category} />}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

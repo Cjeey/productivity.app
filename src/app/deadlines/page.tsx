@@ -256,11 +256,11 @@ export default function DeadlinesPage() {
             ordered.map((deadline) => {
               const daysLeft = daysUntil(deadline.dueDate);
               const tone =
-                daysLeft <= 3
-                  ? "text-red-500 bg-red-50"
+                daysLeft <= 2
+                  ? "bg-red-50 text-red-600"
                   : daysLeft <= 7
-                  ? "text-orange-500 bg-orange-50"
-                  : "text-emerald-600 bg-emerald-50";
+                  ? "bg-orange-50 text-orange-600"
+                  : "bg-emerald-50 text-emerald-600";
               return (
                 <div
                   key={deadline.id}

@@ -1,6 +1,7 @@
-# FocusFlow (MVP)
+# FocusFlow
 
-A lightweight productivity dashboard built with **Next.js (App Router)**, **TailwindCSS**, **Zustand**, and **Supabase (client ready)**. It implements the MVP from the PRD: dashboard, tasks, deadlines, timetable, focus timer, and basic settings with local persistence.
+Personal productivity hub built with **Next.js (App Router)**, **TailwindCSS**, and **Supabase**.
+All CRUD flows (tasks, deadlines, timetable, focus sessions, settings) now talk directly to Supabase with inline validation, toast feedback, skeleton loaders, and responsive layouts that mirror the design mocks.
 
 ## Getting started
 
@@ -16,34 +17,37 @@ A lightweight productivity dashboard built with **Next.js (App Router)**, **Tail
 
 ## Environment variables
 
-Create `.env.local` (or copy `.env.local.example`) to connect Supabase if you want to sync data later:
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
+Populate `.env.local` with the Supabase project keys:
 
-The UI currently persists data locally with Zustand + `localStorage`. Supabase helpers are scaffolded in `src/lib/supabase-client.ts` so you can wire inserts/reads to your tables when keys are added.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
 ## App structure
 
-- `src/app/page.tsx`: Dashboard with greeting, today’s tasks, upcoming deadlines, timetable preview, quick Pomodoro, and weekly focus summary.
-- `src/app/tasks`: Task CRUD + filters by category, priority, and status.
-- `src/app/deadlines`: Deadline tracking with status + estimates.
-- `src/app/timetable`: Weekly timetable planner.
-- `src/app/focus`: Pomodoro timer + session history.
-- `src/app/settings`: Name, timezone, focus target, and theme toggle.
-- `src/lib/store.ts`: Zustand store with seeded data and `localStorage` persistence.
-- `src/lib/seed-data.ts`: Initial data matching the PRD personas/modules.
-- `src/lib/supabase-client.ts`: Supabase client + safe fetch/upsert stubs.
+- `src/app/layout.tsx` – Shell with sidebar navigation, Sonner toaster, and theme handling.
+- `src/app/page.tsx` – Dashboard overview.
+- `src/app/tasks`, `src/app/deadlines`, `src/app/timetable`, `src/app/focus`, `src/app/settings` – Individual feature routes, each wired to Supabase with validation, skeletons, toasts, and delete confirmations.
+- `src/app/error.tsx` / `src/app/not-found.tsx` – Friendly fallbacks for runtime errors and unknown routes.
+- `src/utils/supabase/*` – Browser/server/middleware clients pre-configured for RLS.
+- `src/components/ui/*` – Reusable UI primitives (badges, skeletons, timer, etc.).
 
-## Styling & tooling
+## Testing
 
-- TailwindCSS (class-based tokens in `globals.css`).
-- ESLint + TypeScript (`npm run lint`, `npm run typecheck`).
+```bash
+npm run test       # Vitest unit/integration tests
+npm run test:watch # watch mode
+npm run test:e2e   # Playwright smoke tests (requires `npx playwright install`)
+```
 
-## Next steps
+Playwright uses `tests/e2e/smoke.spec.ts` and the config in `playwright.config.ts`. By default it hits `http://localhost:3000`.
 
-- Connect Supabase tables for tasks, deadlines, and sessions using `safeUpsert`/`safeFetch`.
-- Add auth (email/password) and multi-device sync.
-- Expand analytics (streaks, completion rates) and notifications. 
+## Tooling
+
+- TailwindCSS for design system tokens and responsive utilities.
+- ESLint + TypeScript: `npm run lint`, `npm run typecheck`.
+- Sonner for global toast notifications.
+
+# productivity.app
 # productivity.app
