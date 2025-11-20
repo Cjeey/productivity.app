@@ -75,14 +75,15 @@ export default function DeadlinesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("deadlines")
-      .select<DbDeadlineRow>("id,title,category,due_date,status,description,created_at")
+      .select("id,title,category,due_date,status,description,created_at")
       .eq("user_id", MOCK_USER_ID)
       .order("due_date", { ascending: true });
     if (error) {
       toast.error("Unable to load deadlines", { description: error.message });
       setDeadlines([]);
     } else {
-      setDeadlines((data ?? []).map(mapRow));
+      const rows = (data ?? []) as DbDeadlineRow[];
+      setDeadlines(rows.map(mapRow));
     }
     setLoading(false);
   }, [supabase]);
@@ -119,12 +120,12 @@ export default function DeadlinesPage() {
       description: form.description.trim() || null,
       user_id: MOCK_USER_ID,
     };
-    const { data, error } = await supabase.from("deadlines").insert(payload).select<DbDeadlineRow>().single();
+    const { data, error } = await supabase.from("deadlines").insert(payload).select().single();
     if (error) {
       toast.error("Unable to create deadline", { description: error.message });
     } else if (data) {
       toast.success("Deadline added");
-      setDeadlines((prev) => [mapRow(data), ...prev]);
+      setDeadlines((prev) => [mapRow(data as DbDeadlineRow), ...prev]);
       setForm(buildInitialForm());
       setErrors({});
     }

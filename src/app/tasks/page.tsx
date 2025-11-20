@@ -112,7 +112,7 @@ export default function TasksPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select<DbTaskRow>("id,title,description,category,priority,due_date,status,created_at")
+      .select("id,title,description,category,priority,due_date,status,created_at")
       .eq("user_id", MOCK_USER_ID)
       .order("due_date", { ascending: true });
 
@@ -120,7 +120,8 @@ export default function TasksPage() {
       toast.error("Unable to load tasks", { description: error.message });
       setTasks([]);
     } else {
-      setTasks((data ?? []).map(mapRowToTask));
+      const rows = (data ?? []) as DbTaskRow[];
+      setTasks(rows.map(mapRowToTask));
     }
     setLoading(false);
   }, [supabase]);
@@ -147,7 +148,7 @@ export default function TasksPage() {
       due_date: newTask.dueDate,
       user_id: MOCK_USER_ID,
     };
-    const { data, error } = await supabase.from("tasks").insert(payload).select<DbTaskRow>().single();
+    const { data, error } = await supabase.from("tasks").insert(payload).select().single();
     if (error) {
       toast.error("Unable to create task", { description: error.message });
     } else if (data) {
