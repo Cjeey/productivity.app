@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Inbox, Plus } from "lucide-react";
 import { toast } from "sonner";
 import CategoryBadge from "@/components/ui/category-badge";
 import PriorityBadge from "@/components/ui/priority-badge";
@@ -252,7 +252,12 @@ export default function TasksPage() {
                     deleting={deletingId === task.id}
                   />
                 ))}
-                {column.items.length === 0 && <p className="subtle">No tasks</p>}
+                {column.items.length === 0 && (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-6 text-center text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                    <Inbox className="h-5 w-5 mb-2" aria-hidden="true" />
+                    <p className="text-sm">No tasks in this column</p>
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -395,7 +400,14 @@ function TaskCard({
         )}
       </div>
       <div className="flex items-center justify-between text-sm">
-        <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
+        <div
+          className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800"
+          role="progressbar"
+          aria-valuenow={busyness}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          title={`${busyness}% complete`}
+        >
           <div className="h-2 rounded-full bg-brand-500" style={{ width: `${busyness}%` }} />
         </div>
         <div className="flex items-center gap-2 ml-3">
