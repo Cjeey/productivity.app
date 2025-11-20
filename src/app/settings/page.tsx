@@ -48,7 +48,7 @@ const mapRowToForm = (row: DbSettingsRow | null): FormState => ({
 });
 
 export default function SettingsPage() {
-  const { setTheme } = useTheme();
+  const { setTheme, theme } = useTheme();
   const { preferences, updatePreferences } = usePreferences();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [form, setForm] = useState<FormState>(buildDefaults());
@@ -78,6 +78,11 @@ export default function SettingsPage() {
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    // Keep the select and page appearance in sync with the active theme (guards against SSR/preload differences).
+    setForm((prev) => ({ ...prev, theme: theme }));
+  }, [theme]);
 
   const validate = (): FormErrors => {
     const validation: FormErrors = {};

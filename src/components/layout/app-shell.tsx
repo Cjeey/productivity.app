@@ -2,15 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
-import {
-  CalendarDays,
-  LayoutDashboard,
-  NotebookTabs,
-  Settings,
-  Timer,
-  ListTodo,
-} from "lucide-react";
+import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+import { CalendarDays, LayoutDashboard, LogOut, NotebookTabs, Settings, Timer, ListTodo, UserRound } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -23,6 +20,34 @@ const navItems = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [user, setUser] = useState<User | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!error) setUser(data.session?.user ?? null);
+      setCheckingAuth(false);
+    };
+    void loadSession();
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === "SIGNED_OUT") toast.success("Signed out");
+    });
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Could not sign out", { description: error.message });
+    } else {
+      setUser(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f4f6fb] dark:bg-slate-950 flex">
@@ -91,6 +116,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link href="/tasks" className="btn-ghost px-3 py-1 text-xs">
                 + Task
               </Link>
+              {checkingAuth ? (
+                <span className="subtle text-[11px]">...</span>
+              ) : user ? (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="btn-ghost px-3 py-1 text-xs inline-flex items-center gap-1"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              ) : (
+                <Link href="/login" className="btn-ghost px-3 py-1 text-xs inline-flex items-center gap-1">
+                  <UserRound className="h-4 w-4" />
+                  Login
+                </Link>
+              )}
               <ThemeToggle />
             </div>
           </div>
@@ -113,6 +156,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link href="/deadlines" className="btn-ghost px-3 py-2 text-sm">
                 Deadlines
               </Link>
+              {checkingAuth ? (
+                <span className="subtle text-[11px]">Checking…</span>
+              ) : user ? (
+                <>
+                  <span className="hidden lg:inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                    <UserRound className="h-4 w-4" />
+                    {user.email}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="btn-ghost px-3 py-2 text-sm inline-flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <Link href="/login" className="btn-ghost px-3 py-2 text-sm inline-flex items-center gap-2">
+                  <UserRound className="h-4 w-4" />
+                  Login
+                </Link>
+              )}
               <ThemeToggle />
             </div>
           </div>
