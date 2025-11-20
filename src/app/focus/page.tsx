@@ -10,12 +10,6 @@ import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 import { MOCK_USER_ID } from "@/lib/constants";
 import { Category } from "@/lib/types";
 
-interface DbTaskRow {
-  id: string;
-  title: string;
-  category: string | null;
-}
-
 interface DbFocusSession {
   id: string;
   task_id: string | null;
@@ -49,7 +43,7 @@ export default function FocusPage() {
 
   const loadTasks = useCallback(async () => {
     setLoadingTasks(true);
-    const { data, error } = await supabase.from("tasks").select<DbTaskRow>("id,title,category").eq("user_id", MOCK_USER_ID);
+    const { data, error } = await supabase.from("tasks").select("id,title,category").eq("user_id", MOCK_USER_ID);
     if (error) {
       toast.error("Unable to load tasks", { description: error.message });
       setTasks([]);
@@ -69,7 +63,7 @@ export default function FocusPage() {
     setLoadingSessions(true);
     const { data, error } = await supabase
       .from("focus_sessions")
-      .select<DbFocusSession>("id,task_id,duration_minutes,session_date,created_at")
+      .select("id,task_id,duration_minutes,session_date,created_at")
       .eq("user_id", MOCK_USER_ID)
       .order("created_at", { ascending: false })
       .limit(25);
@@ -104,7 +98,7 @@ export default function FocusPage() {
       session_date: startedAt.slice(0, 10),
       user_id: MOCK_USER_ID,
     };
-    const { data, error } = await supabase.from("focus_sessions").insert(payload).select<DbFocusSession>().single();
+    const { data, error } = await supabase.from("focus_sessions").insert(payload).select().single();
     if (error) {
       toast.error("Could not save session", { description: error.message });
     } else if (data) {

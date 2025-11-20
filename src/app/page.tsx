@@ -44,11 +44,6 @@ interface DbTimetableRow {
   location: string | null;
 }
 
-interface DbSettingsRow {
-  preferred_name: string | null;
-  theme: "light" | "dark" | null;
-}
-
 interface DeadlineSummary {
   id: string;
   title: string;
@@ -129,7 +124,7 @@ export default function DashboardPage() {
     setLoadingTasks(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select<DbTaskRow>("id,title,description,due_date,priority,category,status")
+      .select("id,title,description,due_date,priority,category,status")
       .eq("user_id", MOCK_USER_ID)
       .order("due_date", { ascending: true })
       .limit(20);
@@ -146,7 +141,7 @@ export default function DashboardPage() {
     setLoadingDeadlines(true);
     const { data, error } = await supabase
       .from("deadlines")
-      .select<DbDeadlineRow>("id,title,category,due_date,status,description")
+      .select("id,title,category,due_date,status,description")
       .eq("user_id", MOCK_USER_ID)
       .order("due_date", { ascending: true })
       .limit(4);
@@ -163,7 +158,7 @@ export default function DashboardPage() {
     setLoadingTimetable(true);
     const { data, error } = await supabase
       .from("timetable_events")
-      .select<DbTimetableRow>("id,title,day,start_time,end_time,category,location")
+      .select("id,title,day,start_time,end_time,category,location")
       .eq("user_id", MOCK_USER_ID);
     if (error) {
       toast.error("Unable to load timetable", { description: error.message });
@@ -178,7 +173,7 @@ export default function DashboardPage() {
     setLoadingSettings(true);
     const { data, error } = await supabase
       .from("user_settings")
-      .select<DbSettingsRow>("preferred_name,theme")
+      .select("preferred_name,theme")
       .eq("user_id", MOCK_USER_ID)
       .maybeSingle();
     if (error && error.code !== "PGRST116") {

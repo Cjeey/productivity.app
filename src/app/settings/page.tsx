@@ -56,7 +56,7 @@ export default function SettingsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("user_settings")
-      .select<DbSettingsRow>("id,preferred_name,timezone,daily_focus_target,theme,updated_at")
+      .select("id,preferred_name,timezone,daily_focus_target,theme,updated_at")
       .eq("user_id", MOCK_USER_ID)
       .maybeSingle();
 
