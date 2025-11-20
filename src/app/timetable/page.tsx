@@ -22,6 +22,9 @@ const categoryColors: Record<Category, string> = {
   Personal: "bg-green-500",
 };
 
+const hours = Array.from({ length: 13 }, (_, idx) => 8 + idx); // 8am - 20pm
+const hourHeight = 64;
+
 export default function TimetablePage() {
   const { timetable, addTimetableEvent, deleteTimetableEvent } = useAppStore();
   const [newEvent, setNewEvent] = useState<Omit<TimetableEvent, "id">>({
@@ -64,8 +67,8 @@ export default function TimetablePage() {
         </div>
       </header>
 
-      <section className="card p-5 space-y-4">
-        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-5">
+      <section className="card p-5 space-y-5">
+        <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-6">
           <input
             className="input md:col-span-2"
             placeholder="Event title"
@@ -115,43 +118,76 @@ export default function TimetablePage() {
         </form>
 
         <div className="overflow-x-auto">
-          <div className="min-w-[900px] grid grid-cols-7 gap-3">
-            {grouped.map(({ day, events }) => (
-              <div key={day} className="space-y-2">
-                <div className="flex items-center justify-between text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <div className="min-w-[1100px] rounded-3xl border border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-slate-200 text-sm font-semibold text-slate-500 dark:border-slate-800 dark:text-slate-300">
+              <div className="p-4">Time</div>
+              {dayOptions.map((day) => (
+                <div key={day} className="p-4 text-center text-slate-700 dark:text-slate-100">
                   {day}
-                  <span className="subtle">{events.length} events</span>
                 </div>
-                <div className="min-h-[520px] rounded-2xl border border-slate-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 flex flex-col gap-3">
-                  {events.map((event) => (
-                    <div
-                      key={event.id}
-                      className={`rounded-xl p-3 text-white shadow-sm flex flex-col gap-1 ${categoryColors[event.category]}`}
-                    >
-                      <div className="flex items-center justify-between text-sm font-semibold">
-                        <span>{event.title}</span>
-                        <CalendarClock className="h-4 w-4 opacity-80" />
-                      </div>
-                      <span className="text-xs opacity-90">
-                        {event.startTime} - {event.endTime}
-                      </span>
-                      {event.location && <span className="text-xs opacity-90">{event.location}</span>}
-                      <button
-                        type="button"
-                        className="text-xs underline underline-offset-2"
-                        onClick={() => deleteTimetableEvent(event.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  {events.length === 0 && <p className="subtle">No events</p>}
-                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-[80px_repeat(7,1fr)]">
+              <div className="border-r border-slate-200 dark:border-slate-800">
+                {hours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="h-16 border-b border-slate-100 px-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 flex items-start pt-1"
+                  >
+                    {hour.toString().padStart(2, "0")}:00
+                  </div>
+                ))}
               </div>
-            ))}
+              {dayOptions.map((day) => (
+                <div key={day} className="relative border-r border-slate-100 dark:border-slate-800 last:border-r-0">
+                  {hours.map((hour) => (
+                    <div key={hour} className="h-16 border-b border-slate-100 dark:border-slate-800" />
+                  ))}
+                  {grouped
+                    .find((d) => d.day === day)
+                    ?.events.map((event) => {
+                      const startMinutes = parseMinutes(event.startTime);
+                      const endMinutes = parseMinutes(event.endTime);
+                      const offset = Math.max(startMinutes - 8 * 60, 0);
+                      const height = Math.max(endMinutes - startMinutes, 30);
+                      return (
+                        <div
+                          key={event.id}
+                          className={`absolute left-2 right-2 rounded-2xl p-3 text-white shadow-lg ${categoryColors[event.category]}`}
+                          style={{
+                            top: (offset / 60) * hourHeight,
+                            height: (height / 60) * hourHeight,
+                          }}
+                        >
+                          <div className="flex items-center justify-between text-sm font-semibold">
+                            <span>{event.title}</span>
+                            <CalendarClock className="h-4 w-4 opacity-80" />
+                          </div>
+                          <p className="text-xs opacity-90">
+                            {event.startTime} - {event.endTime}
+                          </p>
+                          {event.location && <p className="text-xs opacity-90">{event.location}</p>}
+                          <button
+                            type="button"
+                            className="mt-2 text-xs underline underline-offset-2"
+                            onClick={() => deleteTimetableEvent(event.id)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+function parseMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
 }

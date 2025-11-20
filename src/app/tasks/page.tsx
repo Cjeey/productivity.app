@@ -1,28 +1,197 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import CategoryBadge from "@/components/ui/category-badge";
 import PriorityBadge from "@/components/ui/priority-badge";
 import StatusBadge from "@/components/ui/status-badge";
-import { useAppStore } from "@/lib/store";
-import { Category, Priority, TaskStatus, Task } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MOCK_USER_ID } from "@/lib/constants";
+import { Category, Priority, Task, TaskStatus } from "@/lib/types";
 import { formatShortDate, isOverdue } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
 const priorityOptions: Priority[] = ["High", "Medium", "Low"];
 const categoryOptions: Category[] = ["Uni", "Work", "Personal"];
 const statusColumns: TaskStatus[] = ["To Do", "In Progress", "Done"];
 
+interface TaskFormState {
+  title: string;
+  description: string;
+  category: Category;
+  priority: Priority;
+  status: TaskStatus;
+  dueDate: string;
+}
+
+interface DbTaskRow {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  priority: string | null;
+  due_date: string | null;
+  status: string | null;
+  created_at: string;
+}
+
+const statusToDb: Record<TaskStatus, string> = {
+  "To Do": "todo",
+  "In Progress": "in_progress",
+  Done: "done",
+};
+
+const dbToStatus: Record<string, TaskStatus> = {
+  todo: "To Do",
+  in_progress: "In Progress",
+  done: "Done",
+};
+
+const priorityToDb: Record<Priority, string> = {
+  High: "high",
+  Medium: "medium",
+  Low: "low",
+};
+
+const dbToPriority: Record<string, Priority> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+const buildInitialForm = (): TaskFormState => ({
+  title: "",
+  description: "",
+  category: "Uni",
+  priority: "Medium",
+  status: "To Do",
+  dueDate: new Date().toISOString().slice(0, 10),
+});
+
+function mapRowToTask(row: DbTaskRow): Task {
+  const normalizedPriority = (row.priority ?? "medium") as keyof typeof dbToPriority;
+  const normalizedStatus = (row.status ?? "todo") as keyof typeof dbToStatus;
+  const normalizedCategory = (row.category ?? "uni").toLowerCase();
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? "",
+    category: (normalizedCategory.charAt(0).toUpperCase() + normalizedCategory.slice(1)) as Category,
+    priority: dbToPriority[normalizedPriority],
+    status: dbToStatus[normalizedStatus],
+    dueDate: row.due_date ?? new Date().toISOString(),
+  };
+}
+
+function validateTask(values: TaskFormState) {
+  const errors: Partial<Record<keyof TaskFormState, string>> = {};
+  if (!values.title.trim()) {
+    errors.title = "Title is required";
+  }
+  if (!values.dueDate) {
+    errors.dueDate = "Pick a due date";
+  } else if (Number.isNaN(new Date(values.dueDate).getTime())) {
+    errors.dueDate = "Invalid date";
+  }
+  return errors;
+}
+
 export default function TasksPage() {
-  const { tasks, addTask, deleteTask, toggleTaskStatus } = useAppStore();
-  const [newTask, setNewTask] = useState<Omit<Task, "id">>({
-    title: "",
-    description: "",
-    category: "Uni",
-    priority: "Medium",
-    status: "To Do",
-    dueDate: new Date().toISOString().slice(0, 10),
-  });
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof TaskFormState, string>>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState<string | null>(null);
+  const [newTask, setNewTask] = useState<TaskFormState>(buildInitialForm());
+
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("tasks")
+      .select<DbTaskRow>("id,title,description,category,priority,due_date,status,created_at")
+      .eq("user_id", MOCK_USER_ID)
+      .order("due_date", { ascending: true });
+
+    if (error) {
+      toast.error("Unable to load tasks", { description: error.message });
+      setTasks([]);
+    } else {
+      setTasks((data ?? []).map(mapRowToTask));
+    }
+    setLoading(false);
+  }, [supabase]);
+
+  useEffect(() => {
+    void fetchTasks();
+  }, [fetchTasks]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const validation = validateTask(newTask);
+    setErrors(validation);
+    if (Object.keys(validation).length > 0) {
+      toast.error("Fix validation errors before submitting");
+      return;
+    }
+    setSubmitting(true);
+    const payload = {
+      title: newTask.title.trim(),
+      description: newTask.description.trim() || null,
+      category: newTask.category.toLowerCase(),
+      priority: priorityToDb[newTask.priority],
+      status: statusToDb[newTask.status],
+      due_date: newTask.dueDate,
+      user_id: MOCK_USER_ID,
+    };
+    const { data, error } = await supabase.from("tasks").insert(payload).select<DbTaskRow>().single();
+    if (error) {
+      toast.error("Unable to create task", { description: error.message });
+    } else if (data) {
+      toast.success("Task added");
+      setTasks((prev) => [mapRowToTask(data as DbTaskRow), ...prev]);
+      setNewTask(buildInitialForm());
+      setErrors({});
+    }
+    setSubmitting(false);
+  };
+
+  const handleAdvance = async (task: Task) => {
+    const order: TaskStatus[] = ["To Do", "In Progress", "Done"];
+    const currentIndex = order.indexOf(task.status);
+    const nextStatus = currentIndex === order.length - 1 ? "Done" : order[currentIndex + 1];
+    if (nextStatus === task.status) return;
+    setStatusLoading(task.id);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: statusToDb[nextStatus] })
+      .eq("id", task.id)
+      .eq("user_id", MOCK_USER_ID);
+    if (error) {
+      toast.error("Unable to update task", { description: error.message });
+    } else {
+      toast.success("Task updated");
+      setTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, status: nextStatus } : item)));
+    }
+    setStatusLoading(null);
+  };
+
+  const handleDelete = async (taskId: string) => {
+    const confirmed = window.confirm("Delete this task? This cannot be undone.");
+    if (!confirmed) return;
+    setDeletingId(taskId);
+    const { error } = await supabase.from("tasks").delete().eq("id", taskId).eq("user_id", MOCK_USER_ID);
+    if (error) {
+      toast.error("Unable to delete task", { description: error.message });
+    } else {
+      toast.success("Task deleted");
+      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+    }
+    setDeletingId(null);
+  };
 
   const grouped = useMemo(() => {
     return statusColumns.map((col) => ({
@@ -30,15 +199,6 @@ export default function TasksPage() {
       items: tasks.filter((task) => task.status === col),
     }));
   }, [tasks]);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    addTask({
-      ...newTask,
-      dueDate: new Date(newTask.dueDate).toISOString(),
-    });
-    setNewTask((prev) => ({ ...prev, title: "", description: "" }));
-  };
 
   return (
     <div className="space-y-6">
@@ -59,22 +219,55 @@ export default function TasksPage() {
         </button>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {grouped.map((column) => (
-          <div key={column.status} className="soft-card p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-slate-800 dark:text-slate-100">{column.status}</p>
-              <span className="badge">{column.items.length}</span>
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="soft-card p-4 space-y-4">
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-10" />
             </div>
-            <div className="space-y-3">
-              {column.items.map((task) => (
-                <TaskCard key={task.id} task={task} toggle={toggleTaskStatus} remove={deleteTask} />
-              ))}
-              {column.items.length === 0 && <p className="subtle">No tasks</p>}
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {grouped.map((column) => (
+            <div key={column.status} className="soft-card p-4 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Column</p>
+                  <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{column.status}</p>
+                </div>
+                <span className="badge">{column.items.length}</span>
+              </div>
+              <div className="space-y-3 flex-1">
+                {column.items.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onAdvance={() => handleAdvance(task)}
+                    onDelete={() => handleDelete(task.id)}
+                    advancing={statusLoading === task.id}
+                    deleting={deletingId === task.id}
+                  />
+                ))}
+                {column.items.length === 0 && <p className="subtle">No tasks</p>}
+              </div>
+              <button
+                type="button"
+                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-2 text-sm text-slate-500 hover:border-slate-400"
+                onClick={() => {
+                  const ref = document.getElementById("new-task-title");
+                  ref?.scrollIntoView({ behavior: "smooth" });
+                  (ref as HTMLInputElement | null)?.focus();
+                }}
+              >
+                + Add Card
+              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="card p-5 space-y-3" id="new-task-form">
         <p className="font-semibold text-slate-900 dark:text-slate-50">Quick add</p>
@@ -85,12 +278,15 @@ export default function TasksPage() {
             </label>
             <input
               id="new-task-title"
-              className="input"
+              className={`input ${errors.title ? "border-red-500" : ""}`}
               value={newTask.title}
-              required
-              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              onChange={(e) => {
+                setNewTask({ ...newTask, title: e.target.value });
+                setErrors((prev) => ({ ...prev, title: undefined }));
+              }}
               placeholder="Research transfer learning"
             />
+            {errors.title && <p className="text-sm text-red-500">{errors.title}</p>}
           </div>
           <div className="space-y-1 md:col-span-2">
             <label className="label" htmlFor="description">
@@ -144,14 +340,18 @@ export default function TasksPage() {
             <label className="label">Due date</label>
             <input
               type="date"
-              className="input"
-              value={newTask.dueDate?.slice(0, 10)}
-              onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+              className={`input ${errors.dueDate ? "border-red-500" : ""}`}
+              value={newTask.dueDate}
+              onChange={(e) => {
+                setNewTask({ ...newTask, dueDate: e.target.value });
+                setErrors((prev) => ({ ...prev, dueDate: undefined }));
+              }}
             />
+            {errors.dueDate && <p className="text-sm text-red-500">{errors.dueDate}</p>}
           </div>
         </div>
-        <button type="submit" className="btn-primary w-full md:w-auto">
-          Add task
+        <button type="submit" className="btn-primary w-full md:w-auto" disabled={submitting}>
+          {submitting ? "Adding..." : "Add task"}
         </button>
       </form>
     </div>
@@ -160,19 +360,26 @@ export default function TasksPage() {
 
 function TaskCard({
   task,
-  toggle,
-  remove,
+  onAdvance,
+  onDelete,
+  advancing,
+  deleting,
 }: {
   task: Task;
-  toggle: (id: string) => void;
-  remove: (id: string) => void;
+  onAdvance: () => void;
+  onDelete: () => void;
+  advancing: boolean;
+  deleting: boolean;
 }) {
+  const busyness = task.status === "Done" ? 100 : task.status === "In Progress" ? 60 : 25;
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1">
-          <p className="font-semibold text-slate-900 dark:text-slate-50">{task.title}</p>
-          <p className="text-sm text-slate-500 dark:text-slate-300">{task.description || "No details"}</p>
+        <div className="space-y-1 overflow-hidden">
+          <p className="font-semibold text-slate-900 dark:text-slate-50 text-ellipsis overflow-hidden whitespace-nowrap">
+            {task.title}
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-300 line-clamp-2">{task.description || "No details"}</p>
         </div>
         <StatusBadge status={task.status} />
       </div>
@@ -188,21 +395,19 @@ function TaskCard({
       </div>
       <div className="flex items-center justify-between text-sm">
         <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
-          <div
-            className="h-2 rounded-full bg-brand-500"
-            style={{ width: `${task.status === "Done" ? 100 : task.status === "In Progress" ? 60 : 25}%` }}
-          />
+          <div className="h-2 rounded-full bg-brand-500" style={{ width: `${busyness}%` }} />
         </div>
         <div className="flex items-center gap-2 ml-3">
-          <button className="btn-ghost px-2 py-1 text-xs" type="button" onClick={() => toggle(task.id)}>
-            Advance
+          <button className="btn-ghost px-2 py-1 text-xs" type="button" onClick={onAdvance} disabled={advancing || task.status === "Done"}>
+            {advancing ? "..." : "Advance"}
           </button>
           <button
             className="btn-ghost px-2 py-1 text-xs text-red-500 hover:text-red-600"
             type="button"
-            onClick={() => remove(task.id)}
+            onClick={onDelete}
+            disabled={deleting}
           >
-            Delete
+            {deleting ? "..." : "Delete"}
           </button>
         </div>
       </div>

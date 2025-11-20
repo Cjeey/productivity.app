@@ -7,7 +7,7 @@
 }
 
 body {
-  @apply bg-[#f6f7fb] text-slate-900 font-display;
+  @apply bg-[#f4f6fb] text-slate-900 font-display;
 }
 
 .dark body {
@@ -60,4 +60,11 @@ body {
 
 .soft-card {
   @apply bg-white/70 border border-slate-100 shadow-card rounded-2xl;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

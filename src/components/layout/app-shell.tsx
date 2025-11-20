@@ -25,12 +25,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[#f6f7fb] dark:bg-slate-950 flex">
-      <aside className="hidden md:flex w-20 flex-col items-center border-r border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 py-6 gap-6">
-        <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white grid place-items-center font-semibold">
-          S
+    <div className="min-h-screen bg-[#f4f6fb] dark:bg-slate-950 flex">
+      <aside className="hidden md:flex w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/80">
+        <div className="flex items-center gap-3 px-8 py-6">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white grid place-items-center font-semibold">
+            S
+          </div>
+          <div>
+            <p className="text-sm text-slate-500 dark:text-slate-300">Welcome back</p>
+            <p className="font-semibold text-slate-900 dark:text-white tracking-tight">Student</p>
+          </div>
         </div>
-        <nav className="flex-1 flex flex-col items-center gap-4 w-full">
+        <nav className="flex-1 flex flex-col gap-1 px-4">
           {navItems.map((item) => {
             const active = pathname === item.href;
             const Icon = item.icon;
@@ -38,15 +44,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`w-full flex flex-col items-center gap-1 py-3 text-xs font-medium transition-all ${
+                className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
                   active
-                    ? "text-blue-600"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-300"
+                    ? "bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-500/10 dark:text-blue-300"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <span
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                    active ? "bg-blue-50 text-blue-600" : "bg-transparent"
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                    active
+                      ? "bg-white text-blue-600 shadow-inner dark:bg-slate-900/60"
+                      : "bg-white text-slate-500 shadow-inner dark:bg-slate-900/40"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -56,12 +64,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="pb-2">
-          <ThemeToggle />
+        <div className="px-4 py-6 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Theme</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Appearance</p>
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         <header className="md:hidden border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
           <div className="container-page flex items-center justify-between py-4">
             <Link href="/" className="font-semibold text-lg text-brand-600 dark:text-brand-400">
@@ -70,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <main className="container-page space-y-8">{children}</main>
+        <main className="flex-1 container-page space-y-8">{children}</main>
       </div>
     </div>
   );

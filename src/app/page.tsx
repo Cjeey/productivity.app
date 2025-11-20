@@ -46,49 +46,63 @@ export default function DashboardPage() {
         <p className="text-sm text-slate-500 dark:text-slate-300">Here&apos;s your overview for today</p>
       </header>
 
-      {/* Stats grid */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="card p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-slate-700">Weekly Progress</h3>
-            <Target className="h-5 w-5 text-slate-400" />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="subtle">Weekly Progress</p>
+              <h3 className="text-xl font-semibold text-slate-900">Keep the streak alive</h3>
+            </div>
+            <Target className="h-6 w-6 text-slate-400" />
           </div>
-          <div className="flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center justify-center gap-3 py-6">
             <ProgressRing value={progress} />
+            <p className="text-sm text-slate-500">
+              {completed} of {tasks.length || 1} tasks completed
+            </p>
           </div>
-          <p className="text-sm text-slate-500 text-center">
-            {completed} of {tasks.length || 1} tasks completed
-          </p>
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            Stay focused on high-impact tasks today.
+          </div>
         </div>
 
-        <div className="rounded-2xl p-6 shadow-sm bg-gradient-to-br from-blue-500 to-purple-600 text-white flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h3>Focus Session</h3>
-            <Clock className="h-5 w-5 opacity-90" />
+        <div className="rounded-2xl p-6 shadow-lg bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white flex flex-col">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-white/70">Focus Session</p>
+              <h3 className="text-2xl font-semibold tracking-tight">2-hour deep work</h3>
+            </div>
+            <Clock className="h-6 w-6 opacity-90" />
           </div>
-          <p className="text-sm opacity-90 mb-6">Start a deep work session for your dissertation</p>
+          <p className="text-sm opacity-90 mt-2 mb-6">
+            Start a focused block for your dissertation research.
+          </p>
           <Link
             href="/focus"
-            className="w-full bg-white text-blue-600 rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors font-medium"
+            className="mt-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-white/95 py-3 text-blue-600 font-semibold hover:bg-white"
           >
             <Play className="h-5 w-5" />
             Start Session
           </Link>
         </div>
 
-        <div className="card p-6 shadow-sm border border-gray-100 flex items-center justify-center">
-          <div className="text-center space-y-2">
-            <p className="text-slate-600 italic text-lg">“{quote}”</p>
-            <div className="w-12 h-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto" />
+        <div className="card p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div>
+            <p className="subtle">Daily Motivation</p>
+            <h3 className="text-xl font-semibold text-slate-900 mb-4">Reminder</h3>
+            <p className="text-slate-600 italic text-lg leading-relaxed">“{quote}”</p>
           </div>
+          <div className="mt-6 rounded-full h-1 w-20 bg-gradient-to-r from-blue-500 to-purple-600" />
         </div>
       </section>
 
-      {/* Main content */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-slate-900">Today&apos;s Schedule</h3>
+            <div>
+              <p className="subtle">Weekly Timetable</p>
+              <h3 className="text-xl font-semibold text-slate-900">Today&apos;s Schedule</h3>
+            </div>
             <Calendar className="h-5 w-5 text-slate-400" />
           </div>
           <div className="space-y-4">
@@ -96,19 +110,17 @@ export default function DashboardPage() {
             {todaysSlots.map((slot) => {
               const colors: Record<string, string> = {
                 Uni: "bg-blue-500",
-                Work: "bg-yellow-500",
-                Personal: "bg-green-500",
+                Work: "bg-amber-500",
+                Personal: "bg-emerald-500",
               };
               const color = colors[slot.category] ?? "bg-blue-500";
               return (
                 <div key={slot.id} className="flex items-center gap-4">
-                  <div className="text-sm text-slate-500 w-16">{slot.startTime}</div>
-                  <div
-                    className={`flex-1 ${color} bg-opacity-10 border-l-4 ${color.replace("bg-", "border-")} rounded-lg p-3`}
-                  >
-                    <p className="text-slate-900 text-sm dark:text-slate-50">{slot.title}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-300">
-                      {slot.startTime} - {slot.endTime} {slot.location ? `· ${slot.location}` : ""}
+                  <div className="w-16 text-sm font-semibold text-slate-500">{slot.startTime}</div>
+                  <div className={`flex-1 rounded-2xl ${color} px-4 py-3 text-white shadow-inner`}>
+                    <p className="font-semibold">{slot.title}</p>
+                    <p className="text-xs text-white/80">
+                      {slot.startTime} – {slot.endTime} {slot.location ? `· ${slot.location}` : ""}
                     </p>
                   </div>
                 </div>
@@ -119,29 +131,32 @@ export default function DashboardPage() {
 
         <div className="card p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-slate-900">Upcoming Deadlines</h3>
+            <div>
+              <p className="subtle">Never miss important coursework</p>
+              <h3 className="text-xl font-semibold text-slate-900">Upcoming Deadlines</h3>
+            </div>
             <AlertCircle className="h-5 w-5 text-slate-400" />
           </div>
           <div className="space-y-4">
             {upcomingDeadlines.length === 0 && <p className="subtle">No deadlines yet.</p>}
             {upcomingDeadlines.map((deadline) => {
               const daysLeft = daysUntil(deadline.dueDate);
-              const color = deadline.category === "Personal" ? "bg-green-500" : "bg-red-500";
+              const urgency =
+                daysLeft <= 3 ? "text-red-500" : daysLeft <= 7 ? "text-orange-500" : "text-emerald-500";
               return (
                 <div
                   key={deadline.id}
-                  className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors dark:bg-slate-800 dark:hover:bg-slate-700"
+                  className="flex items-center rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className={`w-2 h-2 ${color} rounded-full mt-2`} />
                   <div className="flex-1">
-                    <p className="text-slate-900 mb-1 dark:text-slate-50">{deadline.title}</p>
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-300">
-                      <span>{deadline.category}</span>
-                      <span>•</span>
-                      <span>{daysLeft < 0 ? "Overdue" : `${daysLeft} days left`}</span>
-                    </div>
+                    <p className="font-semibold text-slate-900 dark:text-slate-50">{deadline.title}</p>
+                    <p className="text-slate-500 dark:text-slate-300">
+                      {deadline.category} • {deadline.dueDate.slice(0, 10)}
+                    </p>
                   </div>
-                  <div className="text-sm text-slate-400 dark:text-slate-300">{deadline.dueDate.slice(0, 10)}</div>
+                  <p className={`text-right font-semibold ${urgency}`}>
+                    {daysLeft < 0 ? "Overdue" : `${daysLeft} days left`}
+                  </p>
                 </div>
               );
             })}
@@ -151,7 +166,7 @@ export default function DashboardPage() {
 
       <section className="card p-6 space-y-4">
         <SectionHeader title="Today&apos;s tasks" description="Due or overdue items you should ship today." />
-        <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+        <div className="space-y-3">
           {todaysTasks.length === 0 && (
             <p className="subtle">No tasks for today. Add some from the Tasks page.</p>
           )}
@@ -165,12 +180,13 @@ export default function DashboardPage() {
 }
 
 const TaskRow = ({ task, onToggle }: { task: Task; onToggle: () => void }) => {
+  const daysLeft = daysUntil(task.dueDate);
   return (
-    <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
           <p className="font-semibold text-slate-900 dark:text-slate-50">{task.title}</p>
-          <div className="flex flex-wrap gap-2 text-sm text-slate-500 dark:text-slate-300">
+          <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-300">
             <span>{formatShortDate(task.dueDate)}</span>
             <PriorityBadge priority={task.priority} />
             <CategoryBadge category={task.category} />
@@ -181,11 +197,24 @@ const TaskRow = ({ task, onToggle }: { task: Task; onToggle: () => void }) => {
             )}
           </div>
         </div>
-        <StatusBadge status={task.status} />
+        <div className="text-right space-y-1">
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            {daysLeft < 0 ? "Overdue" : `${daysLeft} days`}
+          </p>
+          <StatusBadge status={task.status} />
+        </div>
       </div>
       <div className="flex items-center gap-3 text-sm">
+        <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
+          <div
+            className="h-2 rounded-full bg-blue-500"
+            style={{
+              width: `${task.status === "Done" ? 100 : task.status === "In Progress" ? 60 : 25}%`,
+            }}
+          />
+        </div>
         <button className="btn-ghost px-3 py-1.5" onClick={onToggle} type="button">
-          Next status
+          Advance
         </button>
       </div>
     </div>
