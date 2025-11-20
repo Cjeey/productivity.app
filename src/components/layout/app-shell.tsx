@@ -76,12 +76,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col pb-20 md:pb-0">
-        <header className="md:hidden border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-          <div className="container-page flex items-center justify-between py-4">
-            <Link href="/" className="font-semibold text-lg text-brand-600 dark:text-brand-400">
-              FocusFlow
+        <header className="md:hidden sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+          <div className="max-w-7xl mx-auto px-6 flex items-center justify-between py-4">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center font-semibold shadow-md">
+                FF
+              </span>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-300">FocusFlow</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Today</p>
+              </div>
             </Link>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <Link href="/tasks" className="btn-ghost px-3 py-1 text-xs">
+                + Task
+              </Link>
+              <ThemeToggle />
+            </div>
+          </div>
+        </header>
+        <header className="hidden md:block sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/80">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white grid place-items-center font-semibold shadow-lg">
+                FF
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">FocusFlow</p>
+                <p className="text-base font-semibold text-slate-900 dark:text-white">Streamlined workspace</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href="/tasks" className="btn-ghost px-3 py-2 text-sm">
+                + Task
+              </Link>
+              <Link href="/deadlines" className="btn-ghost px-3 py-2 text-sm">
+                Deadlines
+              </Link>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
         <main className="flex-1 container-page space-y-8">{children}</main>
