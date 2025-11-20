@@ -13,6 +13,7 @@ export default function FocusTimer({ minutes: presetMinutes, taskId, withCard = 
   const [secondsRemaining, setSecondsRemaining] = useState(presetMinutes * 60);
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<Date | null>(null);
+  const previousPreset = useRef(presetMinutes);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -31,10 +32,17 @@ export default function FocusTimer({ minutes: presetMinutes, taskId, withCard = 
   }, [running]);
 
   useEffect(() => {
-    if (!running) {
-      setSecondsRemaining(presetMinutes * 60);
+    if (presetMinutes === previousPreset.current) return;
+    const totalSeconds = presetMinutes * 60;
+    if (running && startedAt) {
+      const elapsedSeconds = previousPreset.current * 60 - secondsRemaining;
+      const nextRemaining = Math.max(totalSeconds - elapsedSeconds, 0);
+      setSecondsRemaining(nextRemaining);
+    } else {
+      setSecondsRemaining(totalSeconds);
     }
-  }, [presetMinutes, running]);
+    previousPreset.current = presetMinutes;
+  }, [presetMinutes, running, secondsRemaining, startedAt]);
 
   const handleStart = useCallback(() => {
     setStartedAt(new Date());
@@ -90,15 +98,14 @@ export default function FocusTimer({ minutes: presetMinutes, taskId, withCard = 
             {minutes}:{seconds}
           </p>
         </div>
-        <span className="badge bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
-          {presetMinutes} min
+        <span
+          className={`badge ${running ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200" : "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"}`}
+        >
+          {running ? "Running" : `${presetMinutes} min`}
         </span>
       </div>
       <div className="relative h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <div
-          className="absolute inset-y-0 left-0 bg-brand-500 transition-all"
-          style={{ width: `${progress}%` }}
-        />
+        <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-500 to-indigo-500 transition-all" style={{ width: `${progress}%` }} />
       </div>
       <div className="flex flex-wrap gap-3">
         {!running ? (

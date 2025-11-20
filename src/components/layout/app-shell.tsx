@@ -75,7 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col pb-20 md:pb-0">
         <header className="md:hidden border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
           <div className="container-page flex items-center justify-between py-4">
             <Link href="/" className="font-semibold text-lg text-brand-600 dark:text-brand-400">
@@ -86,6 +86,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </header>
         <main className="flex-1 container-page space-y-8">{children}</main>
       </div>
+
+      <nav className="md:hidden fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="flex items-center justify-around py-2">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center text-xs font-medium ${
+                  active ? "text-blue-600" : "text-slate-500 dark:text-slate-300"
+                }`}
+              >
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                    active ? "bg-blue-50 text-blue-600" : "text-inherit"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
